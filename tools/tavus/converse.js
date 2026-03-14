@@ -28,7 +28,9 @@ const headers = {
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function loadScript(filePath) {
-  const absPath = resolve(__dirname, '..', filePath);
+  // If we are in tools/tavus, ".." goes to tools/
+  // But our scripts are actually in tools/tavus/scripts
+  const absPath = resolve(__dirname, filePath);
   const text = readFileSync(absPath, 'utf-8').trim();
   console.log(`📄  Loaded context script (${text.length} chars) from ${absPath}`);
   return text;

@@ -23,7 +23,7 @@ if (!TAVUS_REPLICA_ID || TAVUS_REPLICA_ID === 'your_replica_id_here') {
 
 /** Read the sample script from disk. */
 function loadScript(filePath) {
-  const absPath = resolve(__dirname, '..', filePath);
+  const absPath = resolve(__dirname, filePath);
   const text = readFileSync(absPath, 'utf-8').trim();
   console.log(`📄  Loaded script (${text.length} chars) from ${absPath}`);
   return text;
