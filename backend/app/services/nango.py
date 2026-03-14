@@ -32,7 +32,7 @@ async def create_connect_session(engineer: Engineer) -> str:
                     "email": engineer.email,
                     "display_name": engineer.full_name or engineer.username,
                 },
-                "allowed_integrations": ["github", "discord"],
+                "allowed_integrations": ["github", "discord", "slack"],
             },
         )
         response.raise_for_status()
@@ -73,6 +73,34 @@ async def get_github_commits(connection_id: str, owner: str, repo: str) -> Any:
         return response.json()
 
 
+async def get_slack_users(connection_id: str) -> list[dict[str, Any]]:
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        response = await client.get(
+            f"{settings.nango_base_url}/proxy/users.list",
+            headers=nango_headers("slack", connection_id),
+        )
+        response.raise_for_status()
+        data = response.json()
+        members = data.get("members", [])
+        if not isinstance(members, list):
+            return []
+        return [m for m in members if isinstance(m, dict)]
+
+
+async def send_slack_message(connection_id: str, slack_user_id: str, text: str) -> Any:
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        response = await client.post(
+            f"{settings.nango_base_url}/proxy/chat.postMessage",
+            headers=nango_headers("slack", connection_id),
+            json={
+                "channel": slack_user_id,
+                "text": text,
+            },
+        )
+        response.raise_for_status()
+        return response.json()
+
+
 def extract_nango_items(payload: Any) -> list[dict[str, Any]]:
     if isinstance(payload, list):
         return [item for item in payload if isinstance(item, dict)]
@@ -105,10 +133,14 @@ def summarize_github_event(event: dict[str, Any]) -> str:
     payload = event.get("payload") or {}
 
     if event_type == "PushEvent":
-        commits = payload.get("commits") or []
-        messages = ", ".join(commit.get("message", "commit") for commit in commits[:2]) or "new commits"
+        commits = payload.get("commits")
+        if not isinstance(commits, list):
+            commits = []
+        # Explicitly cast or handle the slice to satisfy Pyre
+        safe_commits: list[dict[str, Any]] = [c for c in commits if isinstance(c, dict)]
+        messages = ", ".join(commit.get("message", "commit") for commit in safe_commits[:2]) or "new commits"
         branch = str(payload.get("ref", "refs/heads/main")).split("/")[-1]
-        return f"Pushed {len(commits) or 1} commit(s) to {repo_name} on {branch}: {messages}"
+        return f"Pushed {len(safe_commits) or 1} commit(s) to {repo_name} on {branch}: {messages}"
     if event_type == "PullRequestEvent":
         action = payload.get("action", "updated")
         pr = payload.get("pull_request") or {}

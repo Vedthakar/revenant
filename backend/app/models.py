@@ -39,6 +39,28 @@ class Engineer(Base):
         cascade="all, delete-orphan",
         lazy="selectin",
     )
+    team_members: Mapped[list[TeamMember]] = relationship(
+        back_populates="engineer",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+    )
+
+
+class TeamMember(Base):
+    __tablename__ = "team_members"
+    __table_args__ = (
+        UniqueConstraint("engineer_id", "slack_id", name="uq_team_members_engineer_slack_id"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    engineer_id: Mapped[int] = mapped_column(ForeignKey("engineers.id", ondelete="CASCADE"), nullable=False)
+    slack_id: Mapped[str] = mapped_column(String(100), index=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(50), default="synced", nullable=False)  # synced, invited, joined
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    engineer: Mapped[Engineer] = relationship(back_populates="team_members", lazy="selectin")
 
 
 class Integration(Base):

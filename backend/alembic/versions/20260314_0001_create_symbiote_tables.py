@@ -76,8 +76,26 @@ def upgrade() -> None:
     op.create_index("ix_habit_scores_id", "habit_scores", ["id"])
     op.create_index("ix_habit_scores_engineer_id", "habit_scores", ["engineer_id"])
 
+    op.create_table(
+        "team_members",
+        sa.Column("id", sa.Integer(), primary_key=True),
+        sa.Column("engineer_id", sa.Integer(), sa.ForeignKey("engineers.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("slack_id", sa.String(length=100), nullable=False),
+        sa.Column("name", sa.String(length=255), nullable=False),
+        sa.Column("email", sa.String(length=255), nullable=True),
+        sa.Column("status", sa.String(length=50), nullable=False, server_default="synced"),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.UniqueConstraint("engineer_id", "slack_id", name="uq_team_members_engineer_slack_id"),
+    )
+    op.create_index("ix_team_members_id", "team_members", ["id"])
+    op.create_index("ix_team_members_slack_id", "team_members", ["slack_id"])
+
 
 def downgrade() -> None:
+    op.drop_index("ix_team_members_slack_id", table_name="team_members")
+    op.drop_index("ix_team_members_id", table_name="team_members")
+    op.drop_table("team_members")
+
     op.drop_index("ix_habit_scores_engineer_id", table_name="habit_scores")
     op.drop_index("ix_habit_scores_id", table_name="habit_scores")
     op.drop_table("habit_scores")

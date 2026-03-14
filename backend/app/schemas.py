@@ -96,14 +96,22 @@ class HabitScorePoint(BaseModel):
 class AdminEngineerItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
+class AdminEngineerItem(EngineerSummary):
+    pass
+
+
+class TeamMemberItem(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
     id: int
-    email: EmailStr
-    username: str
-    full_name: str
-    habit_score: float
-    onboarding_complete: bool
-    is_admin: bool
+    slack_id: str
+    name: str
+    email: str | None = None
+    status: str
     created_at: datetime
+
+
+class SlackInviteRequest(BaseModel):
+    slack_user_id: str
 
 
 class HabitLogOverrideRequest(BaseModel):

@@ -30,6 +30,7 @@ export default function Navbar() {
   const navLinks = engineer
     ? [
         { href: "/dashboard", label: "Dashboard" },
+        { href: "/team", label: "Team" },
         { href: "/integrations", label: "Integrations" },
         ...(engineer.is_admin ? [{ href: "/admin", label: "Admin" }] : []),
         { href: "/app", label: "Anna Console" },

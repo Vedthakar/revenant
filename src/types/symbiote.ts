@@ -61,3 +61,12 @@ export interface AdminHabitLogItem extends HabitLogItem {
   engineer_username: string;
   engineer_email: string;
 }
+
+export interface TeamMemberItem {
+  id: number;
+  slack_id: string;
+  name: string;
+  email: string | null;
+  status: "synced" | "invited" | "joined";
+  created_at: string;
+}
