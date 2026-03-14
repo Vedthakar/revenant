@@ -14,7 +14,7 @@ export async function POST(req: Request) {
       system: "You are a helpful, concise AI assistant integrated with a Tavus video replica. Provide natural, conversational responses suitable for video interaction.",
     });
 
-    return result.toDataStreamResponse();
+    return result.toTextStreamResponse();
   } catch (error) {
     console.error('Railtracks API Error:', error);
     return new Response(JSON.stringify({ error: 'Internal Server Error' }), {
