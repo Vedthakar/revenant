@@ -6,10 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "generate": "node tools/tavus/tavus.js",
+    "converse": "node tools/tavus/converse.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
+    "dotenv": "^16.4.7",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.5.0",
     "axios": "^1.13.6",
