@@ -1,37 +1,22 @@
-"""Memory router — Moorcheh AI integration.
-Handles storing and retrieving semantic memories.
-"""
-import os
-import httpx
-from typing import Optional
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from dotenv import load_dotenv
+"""Moorcheh semantic memory router."""
+from __future__ import annotations
 
-load_dotenv()
+from typing import Optional
+
+import httpx
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, Field
+
+from app.config import settings
 
 router = APIRouter()
 
-MOORCHEH_BASE = "https://api.moorcheh.ai"
-MOORCHEH_API_KEY = os.getenv("MOORCHEH_API_KEY")
-
-
-def get_headers() -> dict:
-    if not MOORCHEH_API_KEY:
-        raise HTTPException(status_code=500, detail="MOORCHEH_API_KEY not configured")
-    return {
-        "Authorization": f"Bearer {MOORCHEH_API_KEY}",
-        "Content-Type": "application/json",
-    }
-
-
-# ── Schemas ────────────────────────────────────────────────────────────────────
 
 class StoreRequest(BaseModel):
     content: str
-    type: str = "general"   # e.g. "preference", "code", "decision", "general"
-    tags: list[str] = []
-    metadata: dict = {}
+    type: str = "general"
+    tags: list[str] = Field(default_factory=list)
+    metadata: dict = Field(default_factory=dict)
 
 
 class QueryRequest(BaseModel):
@@ -40,22 +25,31 @@ class QueryRequest(BaseModel):
     filter_type: Optional[str] = None
 
 
-# ── Endpoints ──────────────────────────────────────────────────────────────────
+
+def moorcheh_headers() -> dict[str, str]:
+    if not settings.moorche_api_key:
+        raise HTTPException(status_code=500, detail="MOORCHE_API_KEY not configured")
+    return {
+        "Authorization": f"Bearer {settings.moorche_api_key}",
+        "Content-Type": "application/json",
+    }
+
 
 @router.post("/store")
 async def store_memory(req: StoreRequest):
-    """Store a semantic memory fragment in Moorcheh."""
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=15.0) as client:
         response = await client.post(
-            f"{MOORCHEH_BASE}/v1/memories",
-            headers=get_headers(),
+            f"{settings.moorche_base_url.rstrip('/')}/memories",
+            headers=moorcheh_headers(),
             json={
                 "content": req.content,
-                "type": req.type,
-                "tags": req.tags,
-                "metadata": req.metadata,
+                "collection_id": "revenent_v1",
+                "metadata": {
+                    "type": req.type,
+                    "tags": req.tags,
+                    **req.metadata,
+                },
             },
-            timeout=15.0,
         )
         if not response.is_success:
             raise HTTPException(status_code=response.status_code, detail=response.text)
@@ -64,17 +58,16 @@ async def store_memory(req: StoreRequest):
 
 @router.post("/query")
 async def query_memory(req: QueryRequest):
-    """Retrieve semantically relevant memories from Moorcheh."""
-    async with httpx.AsyncClient() as client:
-        params = {"query": req.query, "top_k": req.top_k}
-        if req.filter_type:
-            params["type"] = req.filter_type
-
-        response = await client.get(
-            f"{MOORCHEH_BASE}/v1/memories/search",
-            headers=get_headers(),
-            params=params,
-            timeout=15.0,
+    async with httpx.AsyncClient(timeout=15.0) as client:
+        response = await client.post(
+            f"{settings.moorche_base_url.rstrip('/')}/memories/search",
+            headers=moorcheh_headers(),
+            json={
+                "query": req.query,
+                "collection_id": "revenent_v1",
+                "top_k": req.top_k,
+                "filter_type": req.filter_type,
+            },
         )
         if not response.is_success:
             raise HTTPException(status_code=response.status_code, detail=response.text)
@@ -82,18 +75,12 @@ async def query_memory(req: QueryRequest):
 
 
 @router.get("/list")
-async def list_memories(limit: int = 20, type: Optional[str] = None):
-    """List stored memories, optionally filtered by type."""
-    async with httpx.AsyncClient() as client:
-        params: dict = {"limit": limit}
-        if type:
-            params["type"] = type
-
+async def list_memories(limit: int = 20):
+    async with httpx.AsyncClient(timeout=15.0) as client:
         response = await client.get(
-            f"{MOORCHEH_BASE}/v1/memories",
-            headers=get_headers(),
-            params=params,
-            timeout=15.0,
+            f"{settings.moorche_base_url.rstrip('/')}/memories",
+            headers=moorcheh_headers(),
+            params={"limit": limit},
         )
         if not response.is_success:
             raise HTTPException(status_code=response.status_code, detail=response.text)
@@ -102,12 +89,10 @@ async def list_memories(limit: int = 20, type: Optional[str] = None):
 
 @router.delete("/{memory_id}")
 async def delete_memory(memory_id: str):
-    """Delete a specific memory by ID."""
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.delete(
-            f"{MOORCHEH_BASE}/v1/memories/{memory_id}",
-            headers=get_headers(),
-            timeout=10.0,
+            f"{settings.moorche_base_url.rstrip('/')}/memories/{memory_id}",
+            headers=moorcheh_headers(),
         )
         if not response.is_success:
             raise HTTPException(status_code=response.status_code, detail=response.text)

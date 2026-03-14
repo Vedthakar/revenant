@@ -2,6 +2,8 @@
 
 /* ── Design Tokens ──────────────────────────────── */
 :root {
+  --font-outfit: "Avenir Next", "Segoe UI", sans-serif;
+  --font-playfair: "Iowan Old Style", "Baskerville", "Palatino Linotype", serif;
   --bg:          #0c0905;
   --bg-soft:     #111008;
   --border:      rgba(255,255,255,0.07);

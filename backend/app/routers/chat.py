@@ -1,33 +1,20 @@
-"""Chat router — Anthropic Claude via FastAPI.
-Proxies chat completions and integrates Moorcheh context retrieval.
-"""
-import os
+"""Chat router — Anthropic Claude via FastAPI."""
+from __future__ import annotations
+
 from typing import Optional
+
+import anthropic
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-import anthropic
-from dotenv import load_dotenv
 
-load_dotenv()
+from app.config import settings
 
 router = APIRouter()
 _client: Optional[anthropic.Anthropic] = None
 
 
-def get_client() -> anthropic.Anthropic:
-    global _client
-    if _client is None:
-        api_key = os.getenv("ANTHROPIC_API_KEY")
-        if not api_key:
-            raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
-        _client = anthropic.Anthropic(api_key=api_key)
-    return _client
-
-
-# ── Schemas ────────────────────────────────────────────────────────────────────
-
 class Message(BaseModel):
-    role: str  # "user" | "assistant"
+    role: str
     content: str
 
 
@@ -49,20 +36,25 @@ class ChatResponse(BaseModel):
     output_tokens: int
 
 
-# ── Endpoints ──────────────────────────────────────────────────────────────────
+
+def get_client() -> anthropic.Anthropic:
+    global _client
+    if _client is None:
+        if not settings.anthropic_api_key:
+            raise HTTPException(status_code=500, detail="ANTHROPIC_API_KEY not configured")
+        _client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    return _client
+
 
 @router.post("", response_model=ChatResponse)
 async def chat_completion(req: ChatRequest) -> ChatResponse:
-    """Send messages to Claude and return Anna's response."""
     client = get_client()
-
     response = client.messages.create(
         model=req.model,
         max_tokens=req.max_tokens,
         system=req.system,
-        messages=[{"role": m.role, "content": m.content} for m in req.messages],
+        messages=[{"role": message.role, "content": message.content} for message in req.messages],
     )
-
     content = response.content[0].text if response.content else ""
     return ChatResponse(
         content=content,
@@ -74,8 +66,8 @@ async def chat_completion(req: ChatRequest) -> ChatResponse:
 
 @router.post("/stream")
 async def chat_stream(req: ChatRequest):
-    """Streaming endpoint for real-time token delivery."""
     from fastapi.responses import StreamingResponse
+
     client = get_client()
 
     def generate():
@@ -83,7 +75,7 @@ async def chat_stream(req: ChatRequest):
             model=req.model,
             max_tokens=req.max_tokens,
             system=req.system,
-            messages=[{"role": m.role, "content": m.content} for m in req.messages],
+            messages=[{"role": message.role, "content": message.content} for message in req.messages],
         ) as stream:
             for text in stream.text_stream:
                 yield f"data: {text}\n\n"
