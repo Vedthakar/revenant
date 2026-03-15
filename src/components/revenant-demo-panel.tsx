@@ -528,18 +528,6 @@ export function RevenantDemoPanel() {
           </motion.div>
         </div>
 
-        <motion.div
-          custom={0.46}
-          initial="hidden"
-          animate="visible"
-          variants={reveal}
-          className="mx-auto border border-white/10 bg-[#0f0f10] px-5 py-4"
-        >
-          <div className="flex items-center justify-between font-ui-mono text-[11px] uppercase tracking-[0.14em] text-white/24">
-            <span>REVENANT_SANDBOX</span>
-            <span>{scenario.sandbox}</span>
-          </div>
-        </motion.div>
       </div>
 
       <div
@@ -819,24 +807,6 @@ export function RevenantDemoPanel() {
         </div>
       </div>
 
-      <motion.div
-        custom={0.46}
-        initial="hidden"
-        animate="visible"
-        variants={reveal}
-        className="mx-auto hidden w-full max-w-[1240px] border-b border-white/[0.08] px-[6.4%] pb-16 lg:block"
-      >
-        <div className="overflow-hidden border border-white/[0.08] bg-[#141414]/50 p-4 font-ui-mono text-xs">
-          <div className="mb-2 flex items-center justify-between">
-            <div className="text-[10px] uppercase tracking-wider text-white/30">REVENANT_SANDBOX</div>
-            <div className="flex items-center gap-1.5 text-[9px] text-white/20">
-              <span className="h-1.5 w-1.5 rounded-full bg-white/10" />
-              {scenario.sandbox}
-            </div>
-          </div>
-          <div className="h-[110px] border border-white/[0.08] bg-[#111]" />
-        </div>
-      </motion.div>
     </div>
   );
 }

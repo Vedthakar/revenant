@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { Mic, MicOff, Send, Settings, Terminal, Database, Sparkles, ChevronRight, Activity, X, Code2, FileText, ExternalLink, BookOpen, Zap, Brain, Radio, BrainCircuit } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { VoicePoweredOrb } from "@/components/ui/voice-powered-orb";
 
 type LogType = "info" | "success" | "warning" | "error" | "system";
 type SidebarTab = "terminal" | "memory" | "code";
@@ -344,12 +344,17 @@ export default function AppDashboard() {
           {/* Avatar */}
           <div className="rev-card" style={{ flex: 1, overflow: "hidden", position: "relative", minHeight: 0, borderRadius: 0 }}>
             {tavusUrl ? (
-              <iframe src={tavusUrl} style={{ width: "100%", height: "100%", border: "none" }} allow="microphone; camera; display-capture; autoplay" />
+              <div style={{ position: "relative", width: "100%", height: "100%", display: "flex" }}>
+                <iframe src={tavusUrl} style={{ width: "100%", height: "100%", border: "none" }} allow="microphone; camera; display-capture; autoplay" />
+                {/* Voice orb overlay — bottom-right corner during live call */}
+                <div style={{ position: "absolute", bottom: 16, right: 16, width: 80, height: 80, zIndex: 20, pointerEvents: "none" }}>
+                  <VoicePoweredOrb hue={25} enableVoiceControl={true} voiceSensitivity={2} maxRotationSpeed={1.5} maxHoverIntensity={0.9} className="overflow-hidden" />
+                </div>
+              </div>
             ) : (
               <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 20 }}>
-                <div style={{ position: "relative", width: 72, height: 72 }}>
-                  <motion.div animate={{ scale: [1, 1.15, 1], opacity: [0.15, 0.4, 0.15] }} transition={{ duration: 3, repeat: Infinity, ease }} style={{ position: "absolute", inset: -24, background: `radial-gradient(circle, ${C.accentGlow} 0%, transparent 70%)`, borderRadius: "50%" }} />
-                  <Image src="/logo.png" alt="" width={72} height={72} style={{ objectFit: "contain", opacity: 0.12, filter: "grayscale(1) brightness(2)" }} />
+                <div style={{ width: 200, height: 200 }}>
+                  <VoicePoweredOrb hue={25} enableVoiceControl={false} simulatedLevel={pipelinePhase ? 0.15 + Math.random() * 0.1 : 0} className="overflow-hidden" />
                 </div>
                 <p className="font-ui-mono" style={{ fontSize: 10, fontWeight: 500, letterSpacing: "0.3em", textTransform: "uppercase", color: C.muted }}>
                   {pipelinePhase === "init" ? "INITIALIZING PIPELINE" : pipelinePhase === "memory" ? "LOADING FOUNDER MEMORY" : pipelinePhase === "avatar" ? "CONNECTING AVATAR" : "WAITING"}

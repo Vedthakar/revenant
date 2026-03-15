@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { RevenantDemoPanel } from "@/components/revenant-demo-panel";
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { RevenantHeroCanvas } from "@/components/revenant-hero-canvas";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { VoicePoweredOrb } from "@/components/ui/voice-powered-orb";
 import {
   BrainCircuit,
   Menu,
@@ -230,8 +231,216 @@ function LogoMarquee() {
   );
 }
 
-function DemoPanel() {
-  return <RevenantDemoPanel />;
+const DEMO_SCENARIOS = [
+  {
+    question: "Why did the team keep auth retry logic inside deploy sequencing instead of moving it to the worker queue?",
+    answer: "During the April incident, queue delays caused token expiry during blue-green cutovers. The coupling stayed in place — the rollback conditions were captured in review threads and the postmortem.",
+    sources: ["GitHub PR #481", "Slack #auth-war-room", "Jira ARC-219"],
+  },
+  {
+    question: "Why was the search shard split postponed even after the migration plan was approved?",
+    answer: "Storage growth outpaced the original estimate. The split was delayed until the new rollback window and runbook were in place — capacity notes are linked in ARC-312.",
+    sources: ["GitHub migration review", "Jira ARC-312", "Release chat"],
+  },
+  {
+    question: "Why did billing stop retrying failed renewals immediately after the duplicate-charge incident?",
+    answer: "The team found retries could replay against stale payment intents. Finance approved a slower retry window until idempotency checks shipped.",
+    sources: ["Slack #billing-ops", "Incident DB", "GitHub policy diff"],
+  },
+];
+
+function OrbDemo() {
+  const [scenarioIdx, setScenarioIdx] = useState(0);
+  const [phase, setPhase] = useState<"typing" | "thinking" | "answering" | "sources" | "idle">("idle");
+  const [displayedQuestion, setDisplayedQuestion] = useState("");
+  const [displayedAnswer, setDisplayedAnswer] = useState("");
+  const [simLevel, setSimLevel] = useState(0);
+  const [isInView, setIsInView] = useState(false);
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const scenario = DEMO_SCENARIOS[scenarioIdx];
+
+  useEffect(() => {
+    const node = sectionRef.current;
+    if (!node) return;
+    const obs = new IntersectionObserver(([e]) => setIsInView(e.isIntersecting), { threshold: 0.3 });
+    obs.observe(node);
+    return () => obs.disconnect();
+  }, []);
+
+  const runScenario = useCallback(() => {
+    const sc = DEMO_SCENARIOS[scenarioIdx];
+    setDisplayedQuestion("");
+    setDisplayedAnswer("");
+    setPhase("typing");
+
+    let qi = 0;
+    const typeQuestion = () => {
+      if (qi <= sc.question.length) {
+        setDisplayedQuestion(sc.question.slice(0, qi));
+        setSimLevel(qi % 3 === 0 ? 0.3 + Math.random() * 0.4 : 0.1);
+        qi++;
+        timerRef.current = setTimeout(typeQuestion, 28 + Math.random() * 22);
+      } else {
+        setSimLevel(0);
+        setPhase("thinking");
+        timerRef.current = setTimeout(() => {
+          setPhase("answering");
+          let ai = 0;
+          const typeAnswer = () => {
+            if (ai <= sc.answer.length) {
+              setDisplayedAnswer(sc.answer.slice(0, ai));
+              setSimLevel(ai % 4 === 0 ? 0.15 + Math.random() * 0.25 : 0.05);
+              ai++;
+              timerRef.current = setTimeout(typeAnswer, 16 + Math.random() * 14);
+            } else {
+              setSimLevel(0);
+              setPhase("sources");
+              timerRef.current = setTimeout(() => {
+                setPhase("idle");
+                timerRef.current = setTimeout(() => {
+                  setScenarioIdx((p) => (p + 1) % DEMO_SCENARIOS.length);
+                }, 3000);
+              }, 2500);
+            }
+          };
+          typeAnswer();
+        }, 1800);
+      }
+    };
+    typeQuestion();
+  }, [scenarioIdx]);
+
+  useEffect(() => {
+    if (!isInView) return;
+    runScenario();
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [isInView, scenarioIdx, runScenario]);
+
+  return (
+    <div ref={sectionRef} className="relative z-10 mt-10 w-full max-w-[1240px] border-t border-white/[0.08] px-4 pt-10 lg:px-0">
+      <div className="grid gap-8 lg:grid-cols-[1fr_1.2fr]">
+        {/* Orb */}
+        <div className="flex flex-col items-center gap-6">
+          <div className="relative h-[320px] w-[320px] md:h-[380px] md:w-[380px]">
+            <VoicePoweredOrb
+              hue={25}
+              enableVoiceControl={false}
+              simulatedLevel={simLevel}
+              className="overflow-hidden"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span
+              className="size-2"
+              style={{
+                borderRadius: "50%",
+                background: phase === "idle" ? "rgba(255,255,255,0.15)" : "#ffb25d",
+                boxShadow: phase !== "idle" ? "0 0 12px rgba(255,178,93,0.6)" : "none",
+                transition: "all 0.3s",
+              }}
+            />
+            <span className="font-ui-mono text-[10px] tracking-[0.12em] text-white/30">
+              {phase === "typing" ? "LISTENING" : phase === "thinking" ? "RECALLING" : phase === "answering" ? "RESPONDING" : phase === "sources" ? "SOURCES ATTACHED" : "STANDBY"}
+            </span>
+          </div>
+        </div>
+
+        {/* Chat simulation */}
+        <div className="flex flex-col border border-white/[0.08] bg-[#0f0f0f]">
+          <div className="flex items-center gap-2 border-b border-white/[0.06] px-5 py-3">
+            <span className="size-[5.82px] bg-[#ffb25d]" />
+            <span className="font-ui-mono text-[11px] tracking-[-0.28px] text-white/40">FOUNDER MENTOR</span>
+          </div>
+
+          <div className="flex min-h-[280px] flex-col gap-5 px-5 py-5">
+            {/* Question */}
+            <AnimatePresence mode="wait">
+              {displayedQuestion && (
+                <motion.div
+                  key={`q-${scenarioIdx}`}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="self-end"
+                >
+                  <div className="border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-[14px] leading-relaxed text-white/60">
+                    &ldquo;{displayedQuestion}
+                    {phase === "typing" && <span className="ml-0.5 inline-block h-4 w-[2px] bg-[#ffb25d] animate-blink" />}
+                    &rdquo;
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Thinking indicator */}
+            {phase === "thinking" && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex items-center gap-2 font-ui-mono text-[11px] text-white/20"
+              >
+                <span>Searching founder memory</span>
+                <span className="flex gap-1">
+                  {[0, 1, 2].map((i) => (
+                    <motion.span
+                      key={i}
+                      animate={{ opacity: [0.2, 1, 0.2] }}
+                      transition={{ duration: 1.15, repeat: Infinity, delay: i * 0.16 }}
+                      className="size-1.5 bg-[#ffb25d]"
+                      style={{ borderRadius: "50%" }}
+                    />
+                  ))}
+                </span>
+              </motion.div>
+            )}
+
+            {/* Answer */}
+            <AnimatePresence mode="wait">
+              {displayedAnswer && (
+                <motion.div
+                  key={`a-${scenarioIdx}`}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <div className="border-l-2 border-[#ffb25d] pl-4 text-[15px] leading-relaxed text-white/75">
+                    {displayedAnswer}
+                    {phase === "answering" && <span className="ml-0.5 inline-block h-4 w-[2px] bg-[#ffb25d] animate-blink" />}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Sources */}
+            <AnimatePresence>
+              {(phase === "sources" || phase === "idle") && scenario.sources && displayedAnswer && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="mt-auto flex flex-wrap gap-2"
+                >
+                  {scenario.sources.map((src, i) => (
+                    <motion.span
+                      key={src}
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: i * 0.12 }}
+                      className="border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 font-ui-mono text-[10px] tracking-[-0.28px] text-[#ffb25d]"
+                    >
+                      {src}
+                    </motion.span>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function RevenantHomepage() {
@@ -241,6 +450,9 @@ export function RevenantHomepage() {
 
       <main className="overflow-hidden">
         <section className="rev-hero-grid rev-noise relative flex min-h-dvh flex-col items-center overflow-hidden bg-[#0f0f0f] pt-[60px] md:pt-0">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-[560px] md:h-[700px] lg:h-[780px]">
+            <RevenantHeroCanvas />
+          </div>
           <div className="relative mx-auto flex w-full max-w-[1240px] flex-1 flex-col items-center justify-center gap-0 px-0 pt-0 md:flex-none md:justify-start md:gap-10 md:px-4 md:pt-[120px] md:pb-24 lg:pt-[160px]">
             <motion.div
               initial="hidden"
@@ -275,7 +487,7 @@ export function RevenantHomepage() {
 
             <LogoMarquee />
 
-            <DemoPanel />
+            <OrbDemo />
           </div>
         </section>
 
@@ -379,7 +591,7 @@ export function RevenantHomepage() {
                   <div className="size-[5.82px] bg-white" />
                   <span className="font-ui-mono text-sm tracking-[-0.28px] text-white">FOR ENGINEERING TEAMS</span>
                 </div>
-                <h2 className="text-3xl leading-[0.9] text-[#f6f6f6] md:text-4xl lg:whitespace-nowrap lg:text-[48px]">
+                <h2 className="text-3xl leading-[0.9] text-[#f6f6f6] md:text-4xl lg:text-[48px]">
                   Built for the moments where context loss becomes expensive
                 </h2>
                 <Link
