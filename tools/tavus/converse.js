@@ -28,7 +28,9 @@ const headers = {
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
 function loadScript(filePath) {
-  const absPath = resolve(__dirname, '..', filePath);
+  // If we are in tools/tavus, ".." goes to tools/
+  // But our scripts are actually in tools/tavus/scripts
+  const absPath = resolve(__dirname, filePath);
   const text = readFileSync(absPath, 'utf-8').trim();
   console.log(`📄  Loaded context script (${text.length} chars) from ${absPath}`);
   return text;
@@ -47,7 +49,7 @@ async function createPersona(contextScript) {
   const url = `${TAVUS_BASE_URL}/personas`;
 
   const body = {
-    persona_name: 'Revenant Lecture Tutor',
+    persona_name: 'Revenent Lecture Tutor',
     system_prompt: `You are a knowledgeable, friendly lecture tutor. Use the following lecture script as your core knowledge base. Answer questions about the material, explain concepts in depth, and engage the student in a natural conversation. Be concise but thorough.
 
 LECTURE SCRIPT:
