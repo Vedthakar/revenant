@@ -1,29 +1,19 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { GeistMono, GeistSans } from "geist/font";
 import { GeistPixelGrid } from "geist/font/pixel";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
 
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ["latin"],
-  variable: "--font-jetbrains",
-});
-
-const spaceGrotesk = Space_Grotesk({
-  subsets: ["latin"],
-  variable: "--font-space-grotesk",
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  subsets: ["latin"],
-  variable: "--font-ibm-plex-mono",
-  weight: ["400", "500", "600"],
-});
+// Using Geist (local, no network required) as the monospace and sans-serif bases.
+// CSS variables --font-jetbrains, --font-space-grotesk, and --font-ibm-plex-mono
+// are aliased to Geist equivalents so downstream components continue to work.
+const geistSans = GeistSans;
+const geistMono = GeistMono;
 
 export const metadata: Metadata = {
-  title: "Revenent - Engineering Memory That Outlives Its Engineers",
+  title: "Revenant - Engineering Memory That Outlives Its Engineers",
   description:
-    "Revenent captures engineering judgment, builds living company memory, and preserves founder knowledge as an interactive AI mentor your team can actually talk to.",
+    "Revenant captures engineering judgment, builds living company memory, and preserves founder knowledge as an interactive AI mentor your team can actually talk to.",
   icons: {
     icon: "/favicon.ico",
     apple: "/apple-touch-icon.png",
@@ -44,7 +34,14 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${jetbrainsMono.variable} ${GeistPixelGrid.variable} ${spaceGrotesk.variable} ${ibmPlexMono.variable}`}
+      className={`${geistSans.variable} ${geistMono.variable} ${GeistPixelGrid.variable}`}
+      style={
+        {
+          "--font-jetbrains": "var(--font-geist-mono)",
+          "--font-space-grotesk": "var(--font-geist-sans)",
+          "--font-ibm-plex-mono": "var(--font-geist-mono)",
+        } as React.CSSProperties
+      }
       suppressHydrationWarning
     >
       <body className="antialiased" suppressHydrationWarning>
