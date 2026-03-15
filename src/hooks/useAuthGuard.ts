@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { apiFetch, clearAccessToken, getAccessToken } from "@/lib/api";
+import { clearAccessToken, getAccessToken } from "@/lib/api";
 import type { EngineerSummary } from "@/types/symbiote";
 
 interface UseAuthGuardOptions {
@@ -27,24 +27,28 @@ export function useAuthGuard(options: UseAuthGuardOptions = {}) {
       return;
     }
 
-    apiFetch<EngineerSummary>("/api/auth/me")
-      .then((engineer) => {
-        if (!active) {
-          return;
-        }
+    const stored = typeof window !== "undefined"
+      ? window.localStorage.getItem("symbiote_engineer")
+      : null;
+
+    if (stored) {
+      try {
+        const engineer = JSON.parse(stored) as EngineerSummary;
+        if (!active) return;
         if (requireAdmin && !engineer.is_admin) {
           router.replace("/dashboard");
           return;
         }
         setUser(engineer);
         setLoading(false);
-      })
-      .catch(() => {
+      } catch {
         clearAccessToken();
-        if (active) {
-          router.replace(`/login?next=${next}`);
-        }
-      });
+        if (active) router.replace(`/login?next=${next}`);
+      }
+    } else {
+      clearAccessToken();
+      if (active) router.replace(`/login?next=${next}`);
+    }
 
     return () => {
       active = false;

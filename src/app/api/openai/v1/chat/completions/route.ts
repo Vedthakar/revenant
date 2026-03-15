@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { OpenAI } from "openai";
+import Anthropic from "@anthropic-ai/sdk";
 import { nanoClawTools, executeNanoClaw } from "@/lib/nanoClaw";
-import { buildRichContext, storeInteraction } from "@/lib/moorchehMemory";
+import { buildFounderContext, storeInteraction } from "@/lib/moorchehMemory";
 
-const openai = new OpenAI({
-  baseURL: "https://api.puter.com/puterai/openai/v1/",
-  apiKey: process.env.OPENAI_API_KEY || "put_api_key_here",
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 export async function POST(req: NextRequest) {
@@ -18,12 +17,13 @@ export async function POST(req: NextRequest) {
     const lastMessage = messages[messages.length - 1];
     const userMessageContent = lastMessage?.content || "Hello";
 
-    const richContext = await buildRichContext(userMessageContent);
+    // Query three founder namespaces in parallel
+    const founderCtx = await buildFounderContext(userMessageContent);
 
-    const openAiMessages = messages
+    const anthropicMessages = messages
       .filter((message: any) => message.role !== "system")
       .map((message: any) => ({
-        role: message.role === "user" ? "user" : "assistant",
+        role: message.role === "user" ? "user" as const : "assistant" as const,
         content: message.content || " ",
       }));
 
@@ -32,62 +32,70 @@ export async function POST(req: NextRequest) {
 ## Identity
 You speak like someone who built the system, remembers the tradeoffs, and can teach a junior engineer why decisions were made.
 You have access to NanoClaw tools to inspect repositories, browse code, run commands, and gather live evidence when needed.
-Your memory is powered by Moorcheh AI and should feel like three memory systems working together: semantic memory, episodic memory, and procedural memory.
+Your memory is powered by Moorcheh AI across three cognitive namespaces: semantic memory (facts/decisions), episodic memory (stories/moments), and procedural memory (frameworks/playbooks).
 
 ## How to answer
-- Explain what the team chose and why it was chosen.
+- Lead with the story or the "why" — explain what the team chose and why it was chosen.
 - When possible, include the story behind the decision, what alternative was debated, and what nearly went wrong.
+- Reference specific files, PRs, or Slack threads when your memory includes them.
 - Prefer concrete architectural reasoning over generic advice.
 - Keep responses concise enough for live voice playback, but rich enough to feel like preserved founder judgment.
 
-## Revenant memory context
-${richContext}
+## Founder Memory
+${founderCtx.formatted}
 
 ## GitHub browsing protocol
-For questions about a repository, call \`fetch_github_api\` to inspect file trees, commits, pull requests, branches, or file contents. Parse owner and repo from any GitHub URL.
-`;
+For questions about a repository, call \`fetch_github_api\` to inspect file trees, commits, pull requests, branches, or file contents.`;
 
-    openAiMessages.unshift({ role: "system", content: systemPrompt });
+    // Build tool definitions for Claude
+    const claudeTools: Anthropic.Messages.Tool[] = nanoClawTools.map((tool) => ({
+      name: tool.name,
+      description: tool.description,
+      input_schema: tool.input_schema as Anthropic.Messages.Tool.InputSchema,
+    }));
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: openAiMessages,
-      tools: nanoClawTools.map((tool) => ({
-        type: "function",
-        function: {
-          name: tool.name,
-          description: tool.description,
-          parameters: tool.input_schema,
-        },
-      })) as any,
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 1024,
+      system: systemPrompt,
+      messages: anthropicMessages,
+      tools: claudeTools,
     });
 
-    const messageObj = response.choices[0].message;
     let finalResponseText = "I encountered an issue processing that.";
 
-    if (messageObj.tool_calls && messageObj.tool_calls.length > 0) {
-      const toolCall = messageObj.tool_calls[0] as any;
-      console.log(`[PROXY] Tool execution requested: ${toolCall.function.name}`);
+    // Check if Claude wants to use a tool
+    const toolUseBlock = response.content.find((block) => block.type === "tool_use");
+    if (toolUseBlock && toolUseBlock.type === "tool_use") {
+      console.log(`[PROXY] Tool execution requested: ${toolUseBlock.name}`);
+      const toolResult = await executeNanoClaw(toolUseBlock.name, toolUseBlock.input);
 
-      const args = JSON.parse(toolCall.function.arguments);
-      const toolResult = await executeNanoClaw(toolCall.function.name, args);
-
-      const followUp = await openai.chat.completions.create({
-        model: "gpt-4o",
+      const followUp = await anthropic.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1024,
+        system: systemPrompt,
         messages: [
-          ...openAiMessages,
-          messageObj,
+          ...anthropicMessages,
+          { role: "assistant" as const, content: response.content },
           {
-            role: "tool",
-            tool_call_id: toolCall.id,
-            content: JSON.stringify(toolResult),
+            role: "user" as const,
+            content: [
+              {
+                type: "tool_result" as const,
+                tool_use_id: toolUseBlock.id,
+                content: JSON.stringify(toolResult),
+              },
+            ],
           },
-        ] as any,
+        ],
+        tools: claudeTools,
       });
 
-      finalResponseText = followUp.choices[0].message.content || "Done.";
+      const textBlock = followUp.content.find((block) => block.type === "text");
+      finalResponseText = textBlock && textBlock.type === "text" ? textBlock.text : "Done.";
     } else {
-      finalResponseText = messageObj.content || "Done.";
+      const textBlock = response.content.find((block) => block.type === "text");
+      finalResponseText = textBlock && textBlock.type === "text" ? textBlock.text : "Done.";
     }
 
     const openAIResponse = {
@@ -108,11 +116,12 @@ For questions about a repository, call \`fetch_github_api\` to inspect file tree
       ],
       usage: { prompt_tokens: 10, completion_tokens: 10, total_tokens: 20 },
       context_metadata: {
-        has_code: richContext.includes("## Code Context"),
-        has_interactions: richContext.includes("## Past Interactions"),
-        has_repo: richContext.includes("## Known Repositories"),
-        has_prefs: richContext.includes("## User Preferences"),
-        context_length: richContext.length,
+        has_semantic: founderCtx.formatted.includes("Semantic Memory"),
+        has_episodic: founderCtx.formatted.includes("Episodic Memory"),
+        has_procedural: founderCtx.formatted.includes("Procedural Memory"),
+        context_length: founderCtx.formatted.length,
+        sources: founderCtx.sources,
+        reinforced_ids: founderCtx.reinforcedIds,
       },
     };
 

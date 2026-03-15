@@ -207,20 +207,22 @@ function LogoMarquee() {
           }}
         >
           <div className="logoloop__track">
-            <ul className="logoloop__list" role="list">
-              {items.map((item, index) => (
-                <li key={`${item.name}-${index}`} className="logoloop__item" role="listitem">
-                  <Image
-                    src={item.src}
-                    alt={item.name}
-                    width={item.width}
-                    height={item.height}
-                    className="w-auto object-contain"
-                    style={{ height: item.height > 30 ? "34px" : item.name === "Jira" ? "25px" : "30px" }}
-                  />
-                </li>
-              ))}
-            </ul>
+            {[0, 1].map((copy) => (
+              <ul key={copy} className="logoloop__list" role="list" aria-hidden={copy === 1 ? true : undefined}>
+                {items.map((item, index) => (
+                  <li key={`${item.name}-${copy}-${index}`} className="logoloop__item" role="listitem">
+                    <Image
+                      src={item.src}
+                      alt={item.name}
+                      width={item.width}
+                      height={item.height}
+                      className="w-auto object-contain"
+                      style={{ height: item.height > 30 ? "34px" : item.name === "Jira" ? "25px" : "30px" }}
+                    />
+                  </li>
+                ))}
+              </ul>
+            ))}
           </div>
         </div>
       </div>

@@ -1,13 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
+import { executeNanoClaw } from "@/lib/nanoClaw";
 
 /**
  * POST /api/nanoclaw/browse
- * Uses Browser Use API to autonomously visit a GitHub repo, read files,
- * and return a structured insight report.
+ * Dual-purpose: (1) Execute NanoClaw tools like read_file for the code viewer,
+ * or (2) use Browser Use API for autonomous GitHub browsing.
  */
 export async function POST(req: NextRequest) {
   try {
-    const { url, task } = await req.json();
+    const body = await req.json();
+
+    // If a tool + input is provided, execute it via NanoClaw (used by code viewer)
+    if (body.tool && body.input) {
+      const result = await executeNanoClaw(body.tool, body.input);
+      return NextResponse.json(result);
+    }
+
+    // Otherwise, fall back to Browser Use API for URL browsing
+    const { url, task } = body;
     const buApiKey = process.env.BROWSER_USE_API_KEY;
 
     if (!buApiKey || !url) {
@@ -16,7 +26,7 @@ export async function POST(req: NextRequest) {
 
     console.log(`[NANOCLAW BROWSE] Starting browser task for: ${url}`);
 
-    const browseTask = task || `Visit ${url}. 
+    const browseTask = task || `Visit ${url}.
     1. Read the README.md file if present and summarize it.
     2. List the main folders and files.
     3. Look at the package.json or main config file to identify the tech stack.
@@ -44,8 +54,8 @@ export async function POST(req: NextRequest) {
 
     const data = await res.json();
     console.log("[NANOCLAW BROWSE] Task complete.");
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       result: data.result || data.output || data,
     });
   } catch (err: any) {
