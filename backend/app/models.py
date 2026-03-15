@@ -72,7 +72,7 @@ class Integration(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     engineer_id: Mapped[int] = mapped_column(ForeignKey("engineers.id", ondelete="CASCADE"), nullable=False)
     provider: Mapped[str] = mapped_column(String(50), nullable=False)
-    nango_connection_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    unified_connection_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     connected: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     connected_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_synced: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

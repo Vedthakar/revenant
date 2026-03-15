@@ -14,6 +14,10 @@ const nextConfig: NextConfig = {
         destination: `${fastApiBaseUrl}/api/integrations/:path*`,
       },
       {
+        source: "/api/webhooks/:path*",
+        destination: `${fastApiBaseUrl}/api/webhooks/:path*`,
+      },
+      {
         source: "/api/dashboard/:path*",
         destination: `${fastApiBaseUrl}/api/dashboard/:path*`,
       },

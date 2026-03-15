@@ -14,6 +14,7 @@ interface IntegrationCardProps {
 const icons: Record<string, typeof Github> = {
   github: Github,
   discord: MessageCircleMore,
+  slack: MessageCircleMore,
 };
 
 function formatDate(value: string | null) {
@@ -57,7 +58,7 @@ export default function IntegrationCard({ integration, description, busy = false
         </div>
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.24em]">Connection ID</p>
-          <p className="mt-2 truncate text-sm text-[var(--text)]">{integration.nango_connection_id || "Pending"}</p>
+          <p className="mt-2 truncate text-sm text-[var(--text)]">{integration.unified_connection_id || "Pending"}</p>
         </div>
       </div>
 
@@ -67,7 +68,7 @@ export default function IntegrationCard({ integration, description, busy = false
         disabled={busy}
         className="btn-primary justify-center disabled:cursor-wait disabled:opacity-60"
       >
-        {busy ? "Opening Nango..." : integration.connected ? "Reconnect" : "Connect"}
+        {busy ? "Redirecting to Unified.to..." : integration.connected ? "Reconnect" : "Connect"}
       </button>
     </div>
   );

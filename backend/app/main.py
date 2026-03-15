@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
-from app.routers import admin, auth, chat, dashboard, health, integrations, memory
+from app.routers import admin, auth, chat, dashboard, health, integrations, memory, webhooks
 from app.services.scheduler import pull_all_engineer_data
 
 logger = logging.getLogger(__name__)
@@ -20,8 +20,8 @@ async def scheduled_pull() -> None:
         try:
             await pull_all_engineer_data()
         except Exception:  # pragma: no cover - scheduler should keep running in prod
-            logger.exception("Scheduled GitHub pull failed")
-        await asyncio.sleep(1800)
+            logger.exception("Scheduled fallback sync failed")
+        await asyncio.sleep(3600)
 
 
 @asynccontextmanager
@@ -55,6 +55,7 @@ app.include_router(chat.router, prefix="/api/chat", tags=["Chat"])
 app.include_router(memory.router, prefix="/api/memory", tags=["Memory"])
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(integrations.router, prefix="/api/integrations", tags=["Integrations"])
+app.include_router(webhooks.router, prefix="/api/webhooks", tags=["Webhooks"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(admin.router, prefix="/api/admin", tags=["Admin"])
 

@@ -1,9 +1,12 @@
-"""Nango integration management router."""
+"""Unified.to integration management router."""
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timezone
+from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,23 +14,38 @@ from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_engineer
 from app.models import Engineer, Integration, TeamMember
-from app.schemas import (
-    IntegrationConnectedRequest,
-    IntegrationStatusItem,
-    NangoSessionResponse,
-    SlackInviteRequest,
-    TeamMemberItem,
+from app.schemas import AuthUrlResponse, IntegrationStatusItem, SlackInviteRequest, TeamMemberItem
+from app.services.unified import (
+    build_auth_url,
+    get_connection,
+    send_message,
+    setup_github_webhooks,
+    setup_messaging_webhooks,
+    setup_ticketing_webhooks,
 )
-from app.services.nango import create_connect_session, get_slack_users, send_slack_message
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 DEFAULT_PROVIDERS = ("github", "discord", "slack")
+SUPPORTED_PROVIDERS = frozenset({"github", "discord", "slack", "jira", "linear", "notion"})
+
+
+def _frontend_base_url() -> str:
+    if settings.allowed_origins:
+        return settings.allowed_origins[0].rstrip("/")
+    return "http://127.0.0.1:3000"
+
+
+def _frontend_integrations_url(**params: str) -> str:
+    base_url = f"{_frontend_base_url()}/integrations"
+    filtered_params = {key: value for key, value in params.items() if value}
+    if not filtered_params:
+        return base_url
+    return f"{base_url}?{urlencode(filtered_params)}"
 
 
 async def ensure_default_integrations(db: AsyncSession, engineer_id: int) -> list[Integration]:
-    result = await db.execute(
-        select(Integration).where(Integration.engineer_id == engineer_id)
-    )
+    result = await db.execute(select(Integration).where(Integration.engineer_id == engineer_id))
     integrations = result.scalars().all()
     by_provider = {item.provider: item for item in integrations}
     updated = False
@@ -48,12 +66,41 @@ async def ensure_default_integrations(db: AsyncSession, engineer_id: int) -> lis
     return integrations
 
 
-@router.post("/nango-session", response_model=NangoSessionResponse)
-async def nango_session(current_engineer: Engineer = Depends(get_current_engineer)) -> NangoSessionResponse:
-    if not settings.nango_secret_key:
-        raise HTTPException(status_code=500, detail="NANGO_SECRET_KEY is not configured")
-    token = await create_connect_session(current_engineer)
-    return NangoSessionResponse(token=token)
+@router.post("/auth-url", response_model=AuthUrlResponse)
+async def get_auth_url(
+    provider: str = Query(..., min_length=1),
+    current_engineer: Engineer = Depends(get_current_engineer),
+) -> AuthUrlResponse:
+    """Generate a Unified authorization URL for a provider."""
+    if not settings.unified_api_key:
+        raise HTTPException(status_code=500, detail="UNIFIED_API_KEY is not configured")
+    if not settings.unified_workspace_id:
+        raise HTTPException(status_code=500, detail="UNIFIED_WORKSPACE_ID is not configured")
+
+    normalized_provider = provider.lower()
+    provider_map = {
+        "github": "github",
+        "discord": "discord",
+        "slack": "slack",
+        "jira": "jira",
+        "linear": "linear",
+        "notion": "notion",
+    }
+    integration_type = provider_map.get(normalized_provider)
+    if integration_type is None:
+        raise HTTPException(status_code=400, detail=f"Unknown provider: {provider}")
+
+    callback_base = f"{settings.fastapi_base_url.rstrip('/')}/api/integrations/callback"
+    success_url = f"{callback_base}?provider={integration_type}"
+    failure_url = f"{callback_base}?error=auth_failed&provider={integration_type}"
+    return AuthUrlResponse(
+        auth_url=build_auth_url(
+            integration_type,
+            str(current_engineer.id),
+            success_url,
+            failure_url,
+        )
+    )
 
 
 @router.get("/status", response_model=list[IntegrationStatusItem])
@@ -64,75 +111,66 @@ async def integration_status(
     return await ensure_default_integrations(db, current_engineer.id)
 
 
-@router.post("/connected", response_model=IntegrationStatusItem)
-async def mark_connected(
-    payload: IntegrationConnectedRequest,
-    current_engineer: Engineer = Depends(get_current_engineer),
+@router.get("/callback")
+async def integration_callback(
+    id: str | None = None,
+    state: str | None = None,
+    error: str | None = None,
+    provider: str | None = None,
     db: AsyncSession = Depends(get_db),
-) -> Integration:
+):
+    """Persist the Unified connection and return the engineer to the integrations page."""
+    if error or not id or not state:
+        return RedirectResponse(url=_frontend_integrations_url(error=error or "auth_failed"))
+
+    try:
+        engineer_id = int(state)
+    except ValueError:
+        return RedirectResponse(url=_frontend_integrations_url(error="invalid_state"))
+
+    connection_id = id
+    connection: dict[str, object] = {}
+    try:
+        connection = await get_connection(connection_id)
+    except Exception:
+        logger.warning("Failed to fetch Unified connection metadata for %s", connection_id, exc_info=True)
+
+    resolved_provider = str(
+        connection.get("integration_type")
+        or provider
+        or "unknown"
+    ).lower()
+    if resolved_provider not in SUPPORTED_PROVIDERS:
+        return RedirectResponse(url=_frontend_integrations_url(error="unknown_provider"))
+
     result = await db.execute(
         select(Integration).where(
-            Integration.engineer_id == current_engineer.id,
-            Integration.provider == payload.provider,
+            Integration.engineer_id == engineer_id,
+            Integration.provider == resolved_provider,
         )
     )
     integration = result.scalar_one_or_none()
     if integration is None:
-        integration = Integration(engineer_id=current_engineer.id, provider=payload.provider)
+        integration = Integration(engineer_id=engineer_id, provider=resolved_provider, connected=False)
         db.add(integration)
 
-    integration.nango_connection_id = payload.connection_id
+    integration.unified_connection_id = connection_id
     integration.connected = True
     integration.connected_at = datetime.now(timezone.utc)
     await db.commit()
-    await db.refresh(integration)
-    return integration
 
+    webhook_url = f"{settings.fastapi_base_url.rstrip('/')}/api/webhooks/unified"
+    try:
+        if resolved_provider == "github":
+            await setup_github_webhooks(connection_id, webhook_url)
+        elif resolved_provider in {"discord", "slack"}:
+            await setup_messaging_webhooks(connection_id, webhook_url)
+        elif resolved_provider in {"jira", "linear"}:
+            await setup_ticketing_webhooks(connection_id, webhook_url)
+    except Exception:
+        logger.warning("Failed to register Unified webhooks for %s", connection_id, exc_info=True)
 
-@router.post("/webhook/nango")
-async def nango_webhook(request: Request, db: AsyncSession = Depends(get_db)):
-    # In a real app, verify Nango signature
-    data = await request.json()
-    connection_id = data.get("connectionId")
-    provider = data.get("providerConfigKey")
-
-    if provider == "slack" and connection_id:
-        result = await db.execute(select(Integration).where(Integration.nango_connection_id == connection_id))
-        integration = result.scalar_one_or_none()
-        if integration:
-            slack_members = await get_slack_users(connection_id)
-            for m in slack_members:
-                if m.get("is_bot") or m.get("deleted"):
-                    continue
-                slack_id = m.get("id")
-                if not slack_id:
-                    continue
-                
-                # Check for existing member
-                res = await db.execute(
-                    select(TeamMember).where(
-                        TeamMember.engineer_id == integration.engineer_id,
-                        TeamMember.slack_id == slack_id
-                    )
-                )
-                member = res.scalar_one_or_none()
-                profile = m.get("profile", {})
-                name = profile.get("real_name") or m.get("name") or "Unknown"
-                email = profile.get("email")
-                
-                if not member:
-                    member = TeamMember(
-                        engineer_id=integration.engineer_id,
-                        slack_id=slack_id,
-                        name=name,
-                        email=email
-                    )
-                    db.add(member)
-                else:
-                    member.name = name
-                    member.email = email
-            await db.commit()
-    return {"status": "ok"}
+    return RedirectResponse(url=_frontend_integrations_url(connected=resolved_provider))
 
 
 @router.get("/slack/members", response_model=list[TeamMemberItem])
@@ -157,24 +195,25 @@ async def send_invite(
     result = await db.execute(
         select(Integration).where(
             Integration.engineer_id == current_engineer.id,
-            Integration.provider == "slack"
+            Integration.provider == "slack",
         )
     )
     integration = result.scalar_one_or_none()
-    if not integration or not integration.nango_connection_id:
+    if not integration or not integration.unified_connection_id:
         raise HTTPException(status_code=400, detail="Slack not connected")
 
-    msg = "Hi! I’m inviting you to join MySaas.com (AI Symbiote). Log in here: http://localhost:3000/login"
-    await send_slack_message(integration.nango_connection_id, payload.slack_user_id, msg)
+    login_url = f"{_frontend_base_url()}/login"
+    message = f"Hi! I’m inviting you to join AI Symbiote. Log in here: {login_url}"
+    await send_message(integration.unified_connection_id, payload.slack_user_id, message)
 
-    res = await db.execute(
+    result = await db.execute(
         select(TeamMember).where(
             TeamMember.engineer_id == current_engineer.id,
-            TeamMember.slack_id == payload.slack_user_id
+            TeamMember.slack_id == payload.slack_user_id,
         )
     )
-    member = res.scalar_one_or_none()
-    if member:
+    member = result.scalar_one_or_none()
+    if member is not None:
         member.status = "invited"
         await db.commit()
 

@@ -12,7 +12,7 @@ from app.schemas import EngineerSummary, LoginRequest, LoginResponse, SignupRequ
 from app.utils.security import create_access_token, hash_password, verify_password
 
 router = APIRouter()
-DEFAULT_PROVIDERS = ("github", "discord")
+DEFAULT_PROVIDERS = ("github", "discord", "slack")
 
 
 async def ensure_default_integrations(db: AsyncSession, engineer: Engineer) -> None:

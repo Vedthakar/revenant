@@ -7,7 +7,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 HabitLabel = Literal["good", "bad", "neutral", "pending"]
-IntegrationProvider = Literal["github", "discord"]
+IntegrationProvider = Literal["github", "discord", "slack", "jira", "linear", "notion"]
 
 
 class EngineerSummary(BaseModel):
@@ -42,8 +42,8 @@ class LoginResponse(BaseModel):
     engineer: EngineerSummary
 
 
-class NangoSessionResponse(BaseModel):
-    token: str
+class AuthUrlResponse(BaseModel):
+    auth_url: str
 
 
 class IntegrationStatusItem(BaseModel):
@@ -53,12 +53,7 @@ class IntegrationStatusItem(BaseModel):
     connected: bool
     connected_at: datetime | None = None
     last_synced: datetime | None = None
-    nango_connection_id: str | None = None
-
-
-class IntegrationConnectedRequest(BaseModel):
-    provider: IntegrationProvider
-    connection_id: str = Field(min_length=1, max_length=255)
+    unified_connection_id: str | None = None
 
 
 class DashboardSummaryResponse(BaseModel):

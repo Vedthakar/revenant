@@ -70,7 +70,7 @@ export default function SignupPage() {
             <div className="mt-10 grid gap-4 md:grid-cols-3">
               {[
                 ["GitHub telemetry", "Batch scoring from commits, reviews, and issue activity."],
-                ["Nango connect", "User OAuth lives in the integrations flow, not in fragile custom code."],
+                ["Unified.to auth", "User OAuth lives in the integrations flow without custom token plumbing or polling."],
                 ["Moorcheh memory", "Personal history and promoted best moments stay queryable over time."],
               ].map(([title, copy]) => (
                 <div key={title} className="rounded-[22px] border border-[var(--border)] bg-[rgba(255,255,255,0.02)] p-5">

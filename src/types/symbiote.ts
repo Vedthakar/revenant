@@ -18,8 +18,8 @@ export interface LoginResponse {
   engineer: EngineerSummary;
 }
 
-export interface NangoSessionResponse {
-  token: string;
+export interface AuthUrlResponse {
+  auth_url: string;
 }
 
 export interface IntegrationStatusItem {
@@ -27,7 +27,7 @@ export interface IntegrationStatusItem {
   connected: boolean;
   connected_at: string | null;
   last_synced: string | null;
-  nango_connection_id: string | null;
+  unified_connection_id: string | null;
 }
 
 export interface DashboardSummaryResponse {

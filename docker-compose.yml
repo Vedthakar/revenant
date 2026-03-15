@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: symbiote
       POSTGRES_DB: symbiote
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - symbiote-db-data:/var/lib/postgresql/data
 

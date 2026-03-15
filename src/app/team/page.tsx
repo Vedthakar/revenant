@@ -57,11 +57,11 @@ export default function TeamPage() {
             <span className="tag tag-gold">Team sync</span>
             <h1 className="mt-5 text-5xl font-semibold leading-tight">Your Slack team members.</h1>
             <p className="mt-5 max-w-3xl text-base leading-8 text-[var(--text-muted)]">
-              This list is synced live from Slack via Nango. Invite your teammates to join you on MySaas.com.
+              This list is hydrated from Slack activity flowing through Unified.to. Invite your teammates to join AI Symbiote.
             </p>
           </div>
           <div className="rounded-[24px] border border-[var(--border-gold)] bg-[rgba(217,119,6,0.08)] px-5 py-4 text-sm leading-7 text-[var(--text)] md:max-w-sm">
-            Nango helps us keep your team list synchronized automatically whenever members join or change in Slack.
+            Unified.to keeps the auth layer pass-through and pushes messaging events back to our API in real time.
           </div>
         </div>
 
