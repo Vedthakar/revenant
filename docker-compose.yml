@@ -1,0 +1,31 @@
+services:
+  symbiote-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: symbiote
+      POSTGRES_PASSWORD: symbiote
+      POSTGRES_DB: symbiote
+    ports:
+      - "5433:5432"
+    volumes:
+      - symbiote-db-data:/var/lib/postgresql/data
+
+  symbiote-redis:
+    image: redis:7.2-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  fastapi-brain:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    env_file: .env
+    depends_on:
+      - symbiote-db
+      - symbiote-redis
+
+volumes:
+  symbiote-db-data:
+  redis-data:

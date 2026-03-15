@@ -1,0 +1,5 @@
+Welcome to today's lecture on the fundamentals of machine learning. In this session, we'll explore the core concepts that power modern artificial intelligence systems, from supervised learning to neural networks.
+
+Machine learning is a subset of artificial intelligence that enables systems to learn and improve from experience without being explicitly programmed. At its heart, it involves feeding data into algorithms that identify patterns, make decisions, and refine their accuracy over time. The three primary types are supervised learning, unsupervised learning, and reinforcement learning.
+
+Supervised learning uses labeled datasets to train models. Think of it like a teacher guiding a student — the model sees both the input and the correct output, and learns to map one to the other. Common applications include image classification, spam detection, and language translation. As we move through this course, you'll get hands-on experience building these models from scratch.

@@ -1,0 +1,292 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-background: hsl(43 23% 93%);
+  --color-foreground: hsl(0 0% 4%);
+  --color-card: hsl(43 23% 93%);
+  --color-card-foreground: hsl(0 0% 4%);
+  --color-muted: hsl(40 10% 85%);
+  --color-muted-foreground: hsl(0 0% 40%);
+  --color-border: hsl(0 0% 75%);
+  --color-input: hsl(0 0% 75%);
+  --color-ring: hsl(0 0% 4%);
+  --color-accent: hsl(20 90% 45%);
+  --color-accent-foreground: hsl(0 0% 100%);
+  --font-mono: var(--font-jetbrains), "JetBrains Mono", monospace;
+  --font-pixel: var(--font-geist-pixel-grid), monospace;
+  --radius: 0rem;
+}
+
+.dark {
+  --color-background: hsl(0 0% 6%);
+  --color-foreground: hsl(43 23% 93%);
+  --color-card: hsl(0 0% 8%);
+  --color-card-foreground: hsl(43 23% 93%);
+  --color-muted: hsl(0 0% 15%);
+  --color-muted-foreground: hsl(0 0% 60%);
+  --color-border: hsl(0 0% 25%);
+  --color-input: hsl(0 0% 25%);
+  --color-ring: hsl(43 23% 93%);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-mono);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  ::selection {
+    background: rgba(255, 178, 93, 0.3);
+    color: inherit;
+  }
+}
+
+.font-display {
+  font-family: var(--font-space-grotesk), sans-serif;
+}
+
+.font-ui-mono {
+  font-family: var(--font-ibm-plex-mono), monospace;
+}
+
+.dot-grid-bg {
+  background-image: radial-gradient(circle, #c4c2b8 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.dark .dot-grid-bg {
+  background-image: radial-gradient(circle, hsl(0 0% 20%) 1px, transparent 1px);
+}
+
+.rev-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(255, 174, 82, 0.14), transparent 32%),
+    radial-gradient(circle at top right, rgba(120, 150, 255, 0.12), transparent 24%),
+    #050505;
+}
+
+.rev-noise::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.18;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 96px 96px;
+  mask-image: radial-gradient(circle at center, black, transparent 92%);
+}
+
+.rev-hero-grid::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at center, rgba(255, 255, 255, 0.06), transparent 52%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 38%);
+}
+
+.rev-card {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)),
+    rgba(15, 15, 15, 0.72);
+  border-radius: 32px;
+  box-shadow:
+    0 24px 80px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(16px);
+}
+
+.rev-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.45rem 0.7rem;
+  font-family: var(--font-ibm-plex-mono), monospace;
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.rev-pill::before {
+  content: "";
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 999px;
+  background: #ffb25d;
+  box-shadow: 0 0 20px rgba(255, 178, 93, 0.75);
+}
+
+.rev-chip {
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.45rem 0.7rem;
+}
+
+.rev-marquee-track {
+  display: flex;
+  width: max-content;
+  align-items: center;
+  gap: 2rem;
+  animation: rev-marquee 24s linear infinite;
+}
+
+.logoloop {
+  position: relative;
+  overflow: hidden;
+  --logoloop-gap: 32px;
+  --logoloop-logoHeight: 28px;
+  --logoloop-fadeColorAuto: #ffffff;
+}
+
+.logoloop__track {
+  display: flex;
+  width: max-content;
+  user-select: none;
+  will-change: transform;
+}
+
+.logoloop__list {
+  display: flex;
+  align-items: center;
+}
+
+.logoloop__item {
+  flex: 0 0 auto;
+  margin-right: var(--logoloop-gap);
+  font-size: var(--logoloop-logoHeight);
+  line-height: 1;
+}
+
+.logoloop__item:last-child {
+  margin-right: var(--logoloop-gap);
+}
+
+.logoloop__item img {
+  height: var(--logoloop-logoHeight);
+  width: auto;
+  display: block;
+  object-fit: contain;
+  image-rendering: -webkit-optimize-contrast;
+  -webkit-user-drag: none;
+  pointer-events: none;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rev-logoloop .logoloop__track {
+  --gap: var(--logoloop-gap);
+  animation: marquee 24s linear infinite;
+}
+
+@keyframes rev-marquee {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(calc(-50% - 1rem));
+  }
+}
+
+@keyframes glitch {
+  0%,
+  90%,
+  100% {
+    transform: translate(0);
+    filter: none;
+  }
+
+  92% {
+    transform: translate(-2px, 1px);
+    filter: hue-rotate(90deg);
+  }
+
+  94% {
+    transform: translate(2px, -1px);
+    filter: hue-rotate(-90deg);
+  }
+
+  96% {
+    transform: translate(-1px, -1px);
+    filter: none;
+  }
+
+  98% {
+    transform: translate(1px, 2px);
+    filter: hue-rotate(45deg);
+  }
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0%);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0;
+  }
+}
+
+.animate-glitch {
+  animation: glitch 5s infinite;
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+.animate-blink {
+  animation: blink 1s step-end infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .rev-marquee-track,
+  .animate-glitch,
+  .animate-marquee,
+  .animate-blink {
+    animation: none !important;
+  }
+}
