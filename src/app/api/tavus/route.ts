@@ -8,7 +8,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing TAVUS_API_KEY" }, { status: 500 });
     }
 
-    const replicaId = process.env.TAVUS_REPLICA_ID || "rf4e9d9790f0";
+    const replicaId = process.env.TAVUS_REPLICA_ID;
+    if (!replicaId) {
+      return NextResponse.json({ error: "Missing TAVUS_REPLICA_ID" }, { status: 500 });
+    }
     let personaId = process.env.TAVUS_PERSONA_ID;
 
     const headers = {

@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     unified_base_url: str = "https://api.unified.to"
     unified_env: str = "Production"
     tavus_api_key: str = ""
-    tavus_replica_id: str = "rf4e9d9790f0"
+    tavus_replica_id: str = ""
     tavus_persona_id: str = ""
 
     redis_url: str = "redis://localhost:6379/0"
